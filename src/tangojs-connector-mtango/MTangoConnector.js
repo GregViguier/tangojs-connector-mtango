@@ -280,7 +280,8 @@ export class MTangoConnector extends tangojs.Connector {
    */
   read_single_device_attribute (devname, attinfo) {
     return this._fetch('get', `devices/${devname}/attributes/value?attr=${attinfo.name}`)
-      .then(values => values.map(value => {
+      .then(valueArray => {
+        let value = valueArray[0]
         let attribute_data = adaptAttributeData(value, attinfo.data_format)
         return new tangojs.api.DeviceAttribute({
           name: value.name,
@@ -291,7 +292,20 @@ export class MTangoConnector extends tangojs.Connector {
           r_dim: new tangojs.tango.AttributeDim(attribute_data),
           data_format: attinfo.data_format
         })
-      }))
+      })
+  }
+
+  /**
+   * @param {string} devname
+   * @param {string[]} attnames
+   * @return {Promise<DeviceAttribute[],Error>}
+   */
+  read_device_attribute (devname, attnames) {
+    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/attributes/value?attr=long_scalar
+    let attInfoPromise = this.get_device_attribute_info(devname, attnames)
+    return attInfoPromise.then(infos =>
+      infos.map(info => this.read_single_device_attribute(devname, info))
+    )
   }
 
   /**
