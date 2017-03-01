@@ -33,11 +33,31 @@ function convertTypeToAttributeDataType (type) {
  */
 function convertTimestampToTimeVal (timestamp) {
   return new tangojs.tango.TimeVal({
-    tv_sec: Math.floor(timestamp/1000),
+    tv_sec: Math.floor(timestamp / 1000),
     tv_usec: (timestamp % 1000) * 1000,
     tv_nsec: 0
   })
 }
+
+/**
+ *
+ * @param {any} device_data
+ * @param {tangojs.tango.AttrDataFormat} data_format
+ * @returns
+ */
+function adaptAttributeData (device_data, data_format) {
+  const ADF = tangojs.tango.AttrDataFormat
+  let is_image = (data_format.key === ADF.IMAGE.key)
+  let is_spectrum = (data_format.key === ADF.SPECTRUM.key)
+  let result = Object.assign({}, {
+    dim_x: (is_image ? device_data.value.width
+      : (is_spectrum ? device_data.value.length : 1)),
+    dim_y: (is_image ? device_data.value.height : 0),
+    value: (is_image ? device_data.value.data : device_data.value)
+  })
+  return result
+}
+
 
 const isResponse = object => object.status && Number.isInteger(object.status)
 
@@ -81,7 +101,7 @@ export class MTangoConnector extends tangojs.Connector {
     }).catch(error => {
       if (isResponse(error)) {
         console.error(`Failed request: ${error.status} ${error.statusText}`,
-                      error)
+          error)
       } else {
         console.error('Network error:', error)
       }
@@ -241,7 +261,7 @@ export class MTangoConnector extends tangojs.Connector {
     const atts = attnames.map(a => `attr=${a}`).join('&')
 
     return this._fetch('get', `devices/${devname}/attributes/info?${atts}`)
-      .then(infos => infos.map( info => {
+      .then(infos => infos.map(info => {
         return new tangojs.api.AttributeInfo(Object.assign(info, {
           writable: getOr(info.writable, tangojs.tango.AttrWriteType),
           data_format: getOr(info.data_format, tangojs.tango.AttrDataFormat),
@@ -255,22 +275,36 @@ export class MTangoConnector extends tangojs.Connector {
 
   /**
    * @param {string} devname
+   * @param {AttributeInfo} attinfo
+   * @return {Promise<DeviceAttribute[],Error>}
+   */
+  read_single_device_attribute (devname, attinfo) {
+    return this._fetch('get', `devices/${devname}/attributes/value?attr=${attinfo.name}`)
+      .then(values => values.map(value => {
+        let attribute_data = adaptAttributeData(value, attinfo.data_format)
+        return new tangojs.api.DeviceAttribute({
+          name: value.name,
+          value: attribute_data.value,
+          quality: tangojs.tango.AttrQuality[value.quality],
+          time: convertTimestampToTimeVal(value.timestamp),
+          data_type: attinfo.data_type,
+          r_dim: new tangojs.tango.AttributeDim(attribute_data),
+          data_format: attinfo.data_format
+        })
+      }))
+  }
+
+  /**
+   * @param {string} devname
    * @param {string[]} attnames
    * @return {Promise<DeviceAttribute[],Error>}
    */
   read_device_attribute (devname, attnames) {
-
-    const atts = attnames.map(a => `attr=${a}`).join('&')
     // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/attributes/value?attr=long_scalar
-    return this._fetch('get', `devices/${devname}/attributes/value?${atts}`)
-      .then(values => values.map(value => {
-        return new tangojs.api.DeviceAttribute({
-          name: value.name,
-          value: value.value,
-          quality: tangojs.tango.AttrQuality[value.quality],
-          time: convertTimestampToTimeVal(value.timestamp)
-        })
-      }))
+    let attInfoPromise = this.get_device_attribute_info(devname, attnames)
+    return attInfoPromise.then(infos =>
+      infos.map(info => this.read_single_device_attribute(devname, info))
+    )
   }
 
   /**
