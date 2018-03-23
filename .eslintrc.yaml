@@ -14,7 +14,7 @@ env:
   node: true
 
 rules:
-  max-len: ['error', 80, 4, {'ignoreUrls': true, 'ignorePattern': '^import '}]
+  max-len: ['error', 100, 4, {'ignoreUrls': true, 'ignorePattern': '^import '}]
   indent: [2, 2, {SwitchCase: 1}]
   quotes: [2, 'single']
   linebreak-style: [2, 'unix']

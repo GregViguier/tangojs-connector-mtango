@@ -310,19 +310,6 @@ export class MTangoConnector extends tangojs.Connector {
 
   /**
    * @param {string} devname
-   * @param {string[]} attnames
-   * @return {Promise<DeviceAttribute[],Error>}
-   */
-  read_device_attribute (devname, attnames) {
-    // http://localhost:8080/mtango/rest/rc3/hosts/localhost/10000/devices/sys/tg_test/1/attributes/value?attr=long_scalar
-    let attInfoPromise = this.get_device_attribute_info(devname, attnames)
-    return attInfoPromise.then(infos =>
-      infos.map(info => this.read_single_device_attribute(devname, info))
-    )
-  }
-
-  /**
-   * @param {string} devname
    * @param {DeviceAttribute[]} attrs
    * @return {Promise<undefined,Error>}
    */
