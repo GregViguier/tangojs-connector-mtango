@@ -1,6 +1,6 @@
 {
   "name": "tangojs-connector-mtango",
-  "version": "0.5.2",
+  "version": "0.5.1",
   "description": "mTango backend support for TangoJS.",
   "main": "index.js",
   "scripts": {

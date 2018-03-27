@@ -1,7 +1,11 @@
-
 import * as tangojs from 'tangojs-core'
 import * as fetchFn from 'node-fetch'
 import * as btoaFn from 'btoa'
+
+function none()
+{
+  return []
+}
 
 /**
  * @param {string} type
@@ -245,6 +249,7 @@ export class MTangoConnector extends tangojs.Connector {
 
     return this._fetch('get', `devices/${devname}/attributes`)
       .then(attributes => attributes.map(a => a.name))
+      .catch(none)
   }
 
   /**
@@ -271,6 +276,7 @@ export class MTangoConnector extends tangojs.Connector {
           event_prop: new tangojs.tango.EventProperties(info.event_prop)
         }))
       }))
+      .catch(none)
   }
 
   /**
@@ -391,6 +397,7 @@ export class MTangoConnector extends tangojs.Connector {
           }))
         })
       })
+      .catch(none)
   }
 
 }
